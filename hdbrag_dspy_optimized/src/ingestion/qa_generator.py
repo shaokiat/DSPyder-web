@@ -17,12 +17,14 @@ def generate_usage_examples(num_examples=10, output_file="data/qa_pairs.json"):
         print("Error: OPENAI_API_KEY not found in environment. Please set it in .env or environment variables.")
         return
 
-    lm = dspy.LM(
-        'openai/gpt-4o-mini', 
-        cache=True,
-        max_tokens=512,
-        temperature=0.7 # Slight temperature for more diverse realistic queries
-    )
+    # lm = dspy.LM(
+    #     'openai/gpt-4o-mini', 
+    #     cache=True,
+    #     max_tokens=512,
+    #     temperature=0.7 # Slight temperature for more diverse realistic queries
+    # )
+    lm = dspy.LM('ollama/qwen3:0.6b', api_base='http://localhost:11434', cache=True, max_tokens=512, temperature=0.2)
+
     dspy.settings.configure(lm=lm)
     
     # Locate data directory relative to project root

@@ -146,8 +146,8 @@ if __name__ == "__main__":
     import os
     # Default to current project structure
     CURRENT_DIR = Path(__file__).parent
-    # Data is in root data/ (3 levels up from src/ingestion/)
-    PROJECT_ROOT = CURRENT_DIR.parent.parent.parent
+    # Data is in root data/ (2 levels up from src/ingestion/)
+    PROJECT_ROOT = CURRENT_DIR.parent.parent
     BASE_DATA_DIR = PROJECT_ROOT / "data"
     
     # Configuration via Environment Variables
