@@ -1,6 +1,6 @@
 import dspy
 
-class RAGSignature(dspy.Signature):
+class GenerateAnswer(dspy.Signature):
     """Answer the question based on the provided HDB context.
     The answer must be grounded ONLY in the context. If the information is missing, say you don't know.
     """
@@ -17,18 +17,19 @@ class GenerateRAGUsageExample(dspy.Signature):
     user_query = dspy.OutputField(desc="A realistic user question or request")
     grounded_answer = dspy.OutputField(desc="A factual answer based strictly on the context")
 
+class GenerateSearchQueries(dspy.Signature):
+    """Generate multiple search queries to find information for the given question."""
+    question = dspy.InputField()
+    queries = dspy.OutputField(desc="List of search queries to broaden discovery")
+
+class GenerateHypotheticalAnswer(dspy.Signature):
+    """Generate a short, hypothetical answer to the question to help find relevant documents."""
+    question = dspy.InputField()
+    answer = dspy.OutputField(desc="A brief hypothetical answer with key terms")
+
 class JudgeQA(dspy.Signature):
-    """
-    Decide whether the predicted answer is correct based on the gold answer.
-
-    Evaluation Criteria:
-    - Correct if: It states the same fact as the gold answer, OR both indicate missing/unknown information.
-    - Incorrect if: It contradicts the gold answer or invents information (hallucination).
-    """
-    question: str = dspy.InputField()
-    gold_answer: str = dspy.InputField()
-    predicted_answer: str = dspy.InputField()
-
-    is_accurate: bool = dspy.OutputField(
-        desc="True if the predicted answer is semantically equivalent to the gold answer"
-    )
+    """Evaluate if the predicted answer accurately reflects the gold answer for the given question."""
+    question = dspy.InputField()
+    gold_answer = dspy.InputField()
+    predicted_answer = dspy.OutputField()
+    is_accurate = dspy.OutputField(desc="Boolean: True if the answer is factually correct, False otherwise")

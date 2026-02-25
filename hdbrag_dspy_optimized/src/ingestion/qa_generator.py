@@ -12,10 +12,6 @@ load_dotenv()
 
 def generate_usage_examples(num_examples=10, output_file="data/qa_pairs.json"):
     # Setup DSPy
-    # Check for OpenAI API key
-    if not os.getenv("OPENAI_API_KEY"):
-        print("Error: OPENAI_API_KEY not found in environment. Please set it in .env or environment variables.")
-        return
 
     # lm = dspy.LM(
     #     'openai/gpt-4o-mini', 

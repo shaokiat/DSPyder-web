@@ -14,6 +14,9 @@ Pull the required local model using Ollama:
 ```bash
 # Default model for the chatbot and optimization
 ollama pull qwen3:0.6b
+ollama pull qwen3:1.7b
+ollama pull qwen3:4b
+
 ```
 
 ### 3. Installation
@@ -105,5 +108,27 @@ uv run python rag_optimizer.py
 | :--- | :--- | :--- |
 | **Unoptimized** | - | 31.0 / 40 (77.5%) |
 | **Optimized (MIPROv2)** | - | 29.0 / 40 (72.5%) |
+
+2026/01/12 23:44:51 INFO dspy.evaluate.evaluate: Average Metric: 25.0 / 50 (50.0%) qwen3:0.6b
+
+
+## Google Colab T4
+2026/01/17 11:17:43 INFO dspy.evaluate.evaluate: Average Metric: 21.0 / 30 (70.0%) qwen3:0.6b - 0.6b (judge)
+
+2026/01/17 11:22:08 INFO dspy.evaluate.evaluate: Average Metric: 17.0 / 30 (56.7%) qwen3:0.6b - 1.7b (judge)
+2026/01/17 11:52:53 INFO dspy.evaluate.evaluate: Average Metric: 14.0 / 30 (46.7%) qwen3:1.7b - 1.7b (judge)
+2026/01/17 12:46:56 INFO dspy.evaluate.evaluate: Average Metric: 22.0 / 30 (73.3%) qwen3:1.7b - 0.6b (judge)
+
+2026/01/17 13:34:11 INFO dspy.evaluate.evaluate: Average Metric: 15.0 / 30 (50.0%) llama3.2:1b - 0.6b (judge)
+
+
+### Post Optimization
+2026/01/17 11:17:43 INFO dspy.evaluate.evaluate: Average Metric: 18.0 / 30 (60.0%) qwen3:0.6b - 0.6b (judge)
+2026/01/17 11:47:59 INFO dspy.evaluate.evaluate: Average Metric: 17.0 / 30 (56.7%) qwen3:0.6b - 1.7b (judge)
+2026/01/17 11:47:59 INFO dspy.evaluate.evaluate: Average Metric: 17.0 / 30 (56.7%) qwen3:1.7b - 1.7b (judge)
+2026/01/17 13:20:06 INFO dspy.evaluate.evaluate: Average Metric: 22.0 / 30 (73.3%) qwen3:1.7b - 0.6b (judge)
+
+
+
 
 *Note: Metrics may vary based on the evaluation dataset size and randomness.*

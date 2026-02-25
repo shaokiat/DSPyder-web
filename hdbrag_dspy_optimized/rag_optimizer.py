@@ -9,8 +9,8 @@ from src.model import HDBRAG
 from src.signatures import JudgeQA
 
 # Configuration
-QA_PAIRS_PATH = 'data/qa_pairs.json'
-OPTIMIZED_RAG_PATH = "data/optimized_rag_qwen3:0.6b.json"
+QA_SPLIT_PATH = 'data/qa_split.json'
+OPTIMIZED_RAG_PATH = "data/optimized_rag_qwen3.json"
 EVAL_RESULTS_PATH = "data/evaluation_results.json"
 STUDENT_MODEL = 'ollama/qwen3:0.6b'
 JUDGE_MODEL = 'ollama/qwen3:0.6b'
@@ -30,19 +30,22 @@ def setup_dspy():
     settings.configure(lm=student)
     return student, judge_lm
 
-def load_data(file_path):
-    """Load and format data for DSPy."""
+def load_split_data(file_path):
+    """Load and format split data (train, dev, test) for DSPy."""
     with open(file_path, 'r') as f:
         data = json.load(f)
     
-    examples = []
-    for item in data:
-        example = dspy.Example(
-            question=item['question'],
-            answer=item['answer']
-        ).with_inputs('question')
-        examples.append(example)
-    return examples
+    splits = {}
+    for split_name, items in data.items():
+        examples = []
+        for item in items:
+            example = dspy.Example(
+                question=item['question'],
+                answer=item['answer']
+            ).with_inputs('question')
+            examples.append(example)
+        splits[split_name] = examples
+    return splits
 
 def get_metric(judge_lm):
     """Define the metric function using a judge model."""
@@ -106,18 +109,15 @@ def main():
     student_lm, judge_lm = setup_dspy()
     metric = get_metric(judge_lm)
     
-    # 2. Load and Split Data
-    all_examples = load_data(QA_PAIRS_PATH)
-    random.seed(42)
-    random.shuffle(all_examples)
+    # 2. Load Split Data
+    splits = load_split_data(QA_SPLIT_PATH)
+    train_examples = splits.get('train', [])
+    dev_examples = splits.get('dev', [])
+    test_examples = splits.get('test', [])
     
-    # Use 70/30 split
-    split_idx = int(len(all_examples) * 0.7)
-    train_examples = all_examples[:split_idx]
-    test_examples = all_examples[split_idx:]
-    
-    logger.info(f"Total examples loaded: {len(all_examples)}")
+    logger.info(f"Loaded split data from {QA_SPLIT_PATH}")
     logger.info(f"Trainset size: {len(train_examples)}")
+    logger.info(f"Devset size: {len(dev_examples)}")
     logger.info(f"Testset size: {len(test_examples)}")
     
     # 3. Initialize RAG
@@ -125,21 +125,24 @@ def main():
     rag = HDBRAG(index=index, k=3)
     
     # 4. Initial Evaluation
-    run_evaluation(rag, test_examples, metric, "initial_pre_optimization")
+    run_evaluation(rag, dev_examples, metric, "initial_dev_pre_optimization")
+    run_evaluation(rag, test_examples, metric, "initial_test_pre_optimization")
     
     # 5. Optimization
     logger.info("Starting optimization with MIPROv2...")
     teleprompter = dspy.MIPROv2(
         metric=metric,
         auto='light',
-        max_bootstrapped_demos=4,
-        max_labeled_demos=4,
+        max_bootstrapped_demos=1,
+        max_labeled_demos=1,
         num_threads=4
     )
     
     optimized_rag = teleprompter.compile(
         rag,
         trainset=train_examples,
+        minibatch=True,
+        minibatch_size=4
     )
     
     optimized_rag.save(OPTIMIZED_RAG_PATH)
@@ -148,7 +151,8 @@ def main():
     # 6. Final Evaluation
     final_rag = HDBRAG(index=index, k=3)
     final_rag.load(OPTIMIZED_RAG_PATH)
-    run_evaluation(final_rag, test_examples, metric, "final_post_optimization")
+    run_evaluation(final_rag, dev_examples, metric, "final_dev_post_optimization")
+    run_evaluation(final_rag, test_examples, metric, "final_test_post_optimization")
 
 if __name__ == "__main__":
     main()

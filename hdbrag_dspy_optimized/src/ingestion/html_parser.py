@@ -17,41 +17,58 @@ def strip_junk(soup):
     ]):
         tag.decompose()
 
-def chunk_text(text, chunk_size=1000, overlap=200):
+def chunk_text_by_structure(soup, chunk_size=800, overlap=150):
+    """
+    Chunks text by respecting HTML structure (sections/paragraphs).
+    Injects the section header into each chunk for better context.
+    """
     chunks = []
+    content = extract_main_content(soup)
     
-    # REVISED SIMPLE APPROACH:
-    # 1. Extract text with clear markers like "___SECTION_START___ Heading ___SECTION_END___"
-    # 2. In chunk_text, find the current section.
-    # 3. Strip markers from the final chunk text.
+    current_section = "General"
+    current_chunk_text = ""
     
-    start = 0
-    while start < len(text):
-        end = min(start + chunk_size, len(text))
-        
-        # Find the last section marker before 'start'
-        current_section = "General"
-        # Search for the marker in the original text
-        all_prior_sections = re.findall(r"___SECTION_START___ (.*?) ___SECTION_END___", text[:start+1])
-        if all_prior_sections:
-            current_section = all_prior_sections[-1]
+    # Process elements sequentially to maintain order and context
+    for tag in content.find_all(["h1", "h2", "h3", "p", "li"]):
+        text = tag.get_text(" ", strip=True)
+        if not text:
+            continue
             
-        # Extract chunk and strip ALL markers
-        chunk_raw = text[start:end]
-        chunk_clean = re.sub(r"___SECTION_START___ .*? ___SECTION_END___", "", chunk_raw)
-        chunk_clean = normalize_text(chunk_clean)
-        
-        if chunk_clean:
-            chunks.append({
-                "text": chunk_clean,
-                "char_start": start,
-                "char_end": end,
-                "section": current_section
-            })
-        
-        if end >= len(text):
-            break
-        start += (chunk_size - overlap)
+        if tag.name.startswith("h"):
+            # New section starts
+            current_section = text
+            # We don't necessarily start a new chunk here if the current one is small,
+            # but usually headers are good break points.
+            if current_chunk_text:
+                # Flush current chunk
+                chunks.append({
+                    "text": current_chunk_text.strip(),
+                    "section": current_section
+                })
+                current_chunk_text = ""
+        else:
+            # Append text with section context prepended if chunk is new
+            if not current_chunk_text:
+                current_chunk_text = f"[{current_section}] "
+            
+            current_chunk_text += text + " "
+            
+            # If chunk exceeds size, save it and start new one with overlap
+            if len(current_chunk_text) > chunk_size:
+                chunks.append({
+                    "text": current_chunk_text.strip(),
+                    "section": current_section
+                })
+                # Simple overlap: keep last N chars (ideally last sentence, but keeping it simple for now)
+                overlap_text = current_chunk_text[-overlap:] if len(current_chunk_text) > overlap else ""
+                current_chunk_text = f"[{current_section}] ... {overlap_text}"
+
+    # Final flush
+    if current_chunk_text:
+        chunks.append({
+            "text": current_chunk_text.strip(),
+            "section": current_section
+        })
         
     return chunks
 
@@ -120,8 +137,8 @@ def process_directory(source_dir: Path, chunks_output_path: Path, source_name: s
             
             doc_id = html_path.stem.replace("-", "_")
             
-            # Perform chunking
-            chunks_meta = chunk_text(clean_text)
+            # Perform improved chunking
+            chunks_meta = chunk_text_by_structure(soup)
             for i, chunk in enumerate(chunks_meta):
                 all_chunks.append({
                     "chunk_id": f"{doc_id}_{i}",
@@ -129,9 +146,7 @@ def process_directory(source_dir: Path, chunks_output_path: Path, source_name: s
                     "source": source_name,
                     "source_path": relative_source_path,
                     "section": chunk["section"],
-                    "text": chunk["text"],
-                    "char_start": chunk["char_start"],
-                    "char_end": chunk["char_end"]
+                    "text": chunk["text"]
                 })
                 
             print(f"Processed: {html_path.name} -> Added {len(chunks_meta)} chunks")
